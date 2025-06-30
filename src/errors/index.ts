@@ -1,8 +1,10 @@
+import { CustomError, HttpDecoratorError, NetworkError, ValidationError } from '../types';
+
 export * from '../types';
 
 export class ErrorHandler {
-    static handle(error: any): never {
-        if (error.name === 'HttpDecoratorError') {
+    static handle(error: unknown): never {
+        if (error instanceof HttpDecoratorError) {
             console.error(`[${error.code}] ${error.message}`);
             if (error.details) {
                 console.error('Details:', error.details);
@@ -13,11 +15,29 @@ export class ErrorHandler {
         throw error;
     }
 
-    static isValidationError(error: any): boolean {
-        return error.code === 'VALIDATION_ERROR';
+    static isValidationError(error: unknown): error is ValidationError {
+        return error instanceof ValidationError;
     }
 
-    static isNetworkError(error: any): boolean {
-        return error.code === 'NETWORK_ERROR';
+    static isNetworkError(error: unknown): error is NetworkError {
+        return error instanceof NetworkError;
+    }
+
+    static isCustomError(error: unknown): error is CustomError {
+        return error instanceof CustomError;
+    }
+
+    static getValidationErrors(error: unknown): any[] {
+        if (this.isValidationError(error)) {
+            return error.details?.validationErrors || [];
+        }
+        return [];
+    }
+
+    static getNetworkStatus(error: unknown): number | undefined {
+        if (this.isNetworkError(error)) {
+            return error.details?.response?.status;
+        }
+        return undefined;
     }
 }

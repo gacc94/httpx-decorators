@@ -9,3 +9,6 @@ export * from './errors';
 
 // Re-exportar zod para conveniencia
 export { z } from 'zod';
+
+// Exportar tipos de utilidad
+export type { InferRequestType, InferResponseType, RequestParams, HttpDecoratorConfig } from './types';

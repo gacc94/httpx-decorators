@@ -1,18 +1,30 @@
 {
     "name": "httpx-decorators",
-    "version": "1.0.0",
+    "url": "https://github.com/gacc94/httpx-decorators",
+    "version": "2.1.0",
     "description": "Framework-agnostic HTTP client library with decorators, Axios, and Zod validation",
     "main": "dist/index.js",
     "types": "dist/index.d.ts",
     "author": "Gustavo Caqui Cueva - gacc",
     "license": "MIT",
-    "homepage": "https://github.com/gacc/httpx-decorators",
+    "homepage": "https://github.com/gacc94/httpx-decorators",
+    "exports": {
+        ".": {
+            "import": "./dist/index.js",
+            "require": "./dist/index.js"
+        }
+    },
+    "engines": {
+        "node": ">=12"
+    },
+    "issueTracker": "https://github.com/gacc94/httpx-decorators/issues",
     "scripts": {
         "build": "tsc",
         "dev": "ts-node src/examples/basic-usage.ts",
         "watch": "nodemon --exec ts-node src/examples/basic-usage.ts",
         "test": "echo \"Error: no test specified\" && exit 1",
-        "format": "prettier --write ."
+        "format": "prettier --write .",
+        "publish": "npm publish"
     },
     "keywords": [
         "http",
@@ -20,6 +32,7 @@
         "axios",
         "zod",
         "typescript",
+        "node",
         "validation"
     ],
     "dependencies": {
@@ -33,5 +46,11 @@
         "prettier": "^3.6.2",
         "ts-node": "^10.9.0",
         "typescript": "^5.0.0"
-    }
+    },
+    "files": [
+        "dist",
+        "examples",
+        "LICENSE",
+        "README.md"
+    ]
 }
