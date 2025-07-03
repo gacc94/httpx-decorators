@@ -1,120 +1,133 @@
 import { ApiClient } from './api-client';
 import { ErrorHandler } from '../errors';
 
-async function demonstrateNewAPI() {
-    console.log('🚀 Demostración de la nueva API con decoradores unificados\n');
+/**
+ * Demostración completa de la librería httx-decorators con @Request()
+ */
+async function demonstrateHttpDecorators() {
+    console.log('🚀 Demostración de httx-decorators con @Request()\n');
 
-    // Crear instancia del cliente
     const api = new ApiClient('https://jsonplaceholder.typicode.com');
-
-    // Configurar hooks de autenticación
     api.setupAuthHooks();
 
     try {
-        // Ejemplo 1: Sign In con nueva sintaxis
-        console.log('1. 🔐 Intentando hacer sign in...');
+        // Ejemplo 1: POST con @Request() para validar credenciales
+        console.log('1. 🔐 Sign in con @Request() para validar credenciales...');
         try {
-            const user = await api.signIn({
-                body: {
-                    email: 'test@example.com',
-                    password: 'password123',
-                },
-                headers: {
-                    'User-Agent': 'HttpDecorators/2.0',
-                },
-            });
+            const user = await api.signIn(
+                { email: 'test@example.com', password: 'password123' }, // @Request()
+                { remember: true }, // @Query()
+                { 'User-Agent': 'httx-decorators/1.0' }, // @Headers()
+                undefined as any // @Response() se inyecta automáticamente
+            );
 
-            console.log('✅ Usuario autenticado:', user);
+            console.log('✅ Usuario autenticado:', user.displayName);
+            console.log('🔑 Token válido:', user.isTokenValid);
             api.setAuthToken(user.token);
         } catch (error) {
             console.log('ℹ️ Sign in falló (esperado con JSONPlaceholder)');
-            // Usar token fake para continuar con la demo
             api.setAuthToken('fake-jwt-token');
         }
 
-        // Ejemplo 2: Obtener usuarios con filtros
-        console.log('\n2. 👥 Obteniendo lista de usuarios...');
+        // Ejemplo 2: POST con @Request() para crear usuario
+        console.log('\n2. 👤 Crear usuario con @Request() para validar datos...');
         try {
-            const users = await api.getUsers({
-                query: {
-                    page: 1,
-                    limit: 5,
-                    search: 'john',
+            const newUser = await api.createUser(
+                {
+                    // @Request()
+                    email: 'newuser@example.com',
+                    password: 'securepass123',
+                    name: 'John Doe',
+                    age: 25,
                 },
-                headers: {
-                    Authorization: 'Bearer fake-token',
-                },
-            });
-            console.log('✅ Usuarios obtenidos:', users);
+                { Authorization: 'Bearer fake-token' }, // @Headers()
+                undefined as any // @Response()
+            );
+
+            console.log('✅ Usuario creado:', newUser.displayName);
         } catch (error) {
-            console.log('ℹ️ Error esperado con schema de respuesta');
+            console.log('ℹ️ Error esperado con JSONPlaceholder');
             if (ErrorHandler.isValidationError(error)) {
                 console.log('📋 Errores de validación:', ErrorHandler.getValidationErrors(error));
             }
         }
 
-        // Ejemplo 3: Obtener usuario específico
-        console.log('\n3. 👤 Obteniendo usuario específico...');
+        // Ejemplo 3: GET sin @Request() (típico para GET)
+        console.log('\n3. 👤 Obtener usuario por ID (GET sin @Request())...');
         try {
-            const user = await api.getUserById({
-                params: { id: '1' },
-                headers: { Authorization: 'Bearer fake-token' },
-            });
-            console.log('✅ Usuario obtenido:', user);
+            const user = await api.getUserById(
+                { id: '1' }, // @Params()
+                { Authorization: 'Bearer fake-token' }, // @Headers()
+                undefined as any // @Response()
+            );
+
+            console.log('✅ Usuario obtenido:', user.displayName);
         } catch (error) {
             console.log('ℹ️ Error esperado con schema de respuesta');
         }
 
-        // Ejemplo 4: Crear post con validación
-        console.log('\n4. 📝 Creando nuevo post...');
+        // Ejemplo 4: GET con query parameters
+        console.log('\n4. 👥 Obtener usuarios con query parameters...');
         try {
-            const post = await api.createPost({
-                body: {
-                    title: 'Mi nuevo post con decoradores unificados',
-                    content: 'Este es el contenido de mi post usando la nueva API con configuración unificada en los decoradores.',
-                    tags: ['typescript', 'decorators', 'http'],
+            const users = await api.getUsers(
+                { page: 1, limit: 5, search: 'john' }, // @Query()
+                { Authorization: 'Bearer fake-token' }, // @Headers()
+                undefined as any // @Response()
+            );
+
+            console.log('✅ Usuarios obtenidos:', users.total);
+        } catch (error) {
+            console.log('ℹ️ Error esperado con schema de respuesta');
+        }
+
+        // Ejemplo 5: PUT con @Request() para actualizar
+        console.log('\n5. ✏️ Actualizar usuario con @Request()...');
+        try {
+            const updatedUser = await api.updateUser(
+                { name: 'John Doe Updated', age: 26 }, // @Request()
+                { id: '1' }, // @Params()
+                { Authorization: 'Bearer fake-token' }, // @Headers()
+                undefined as any // @Response()
+            );
+
+            console.log('✅ Usuario actualizado:', updatedUser.displayName);
+        } catch (error) {
+            console.log('ℹ️ Error esperado con schema de respuesta');
+        }
+
+        // Ejemplo 6: POST con @Request() para crear post
+        console.log('\n6. 📝 Crear post con @Request() para validar contenido...');
+        try {
+            const post = await api.createPost(
+                {
+                    // @Request()
+                    title: 'Mi post con @Request()',
+                    content:
+                        'Este post demuestra el uso del decorador @Request() para validar automáticamente el cuerpo de la petición usando Zod schemas.',
+                    tags: ['typescript', 'decorators', 'validation'],
                     published: true,
                 },
-                headers: { Authorization: 'Bearer fake-token' },
-            });
-            console.log('✅ Post creado:', post);
+                { Authorization: 'Bearer fake-token' }, // @Headers()
+                undefined as any // @Response()
+            );
+
+            console.log('✅ Post creado:', post.title);
+            console.log('📄 Excerpt:', post.excerpt);
         } catch (error) {
             console.log('ℹ️ Error esperado con schema de respuesta');
         }
 
-        // Ejemplo 5: Actualizar usuario
-        console.log('\n5. ✏️ Actualizando usuario...');
+        // Ejemplo 7: DELETE sin @Request()
+        console.log('\n7. 🗑️ Eliminar usuario...');
         try {
-            const updatedUser = await api.updateUser({
-                params: { id: '1' },
-                body: {
-                    name: 'John Doe Updated',
-                    age: 30,
-                },
-                headers: { Authorization: 'Bearer fake-token' },
-            });
-            console.log('✅ Usuario actualizado:', updatedUser);
-        } catch (error) {
-            console.log('ℹ️ Error esperado con schema de respuesta');
-        }
+            await api.deleteUser(
+                { id: '1' }, // @Params()
+                { Authorization: 'Bearer fake-token' } // @Headers()
+            );
 
-        // Ejemplo 6: Manejo de errores personalizados
-        console.log('\n6. ❌ Probando manejo de errores...');
-        try {
-            await api.getUserById({
-                params: { id: 'nonexistent' },
-                headers: { Authorization: 'Bearer fake-token' },
-            });
+            console.log('✅ Usuario eliminado correctamente');
         } catch (error) {
-            if (ErrorHandler.isCustomError(error)) {
-                console.log('🔧 Error personalizado capturado:', error.message);
-            } else if (ErrorHandler.isNetworkError(error)) {
-                console.log('🌐 Error de red:', ErrorHandler.getNetworkStatus(error));
-            } else if (error instanceof Error) {
-                console.log('⚠️ Error general:', error.message);
-            } else {
-                console.log('⚠️ Error general:', String(error));
-            }
+            console.log('ℹ️ Error esperado con JSONPlaceholder');
         }
 
         console.log('\n✨ Demostración completada exitosamente');
@@ -124,65 +137,51 @@ async function demonstrateNewAPI() {
     }
 }
 
-// Función para demostrar hooks personalizados
-async function demonstrateHooks() {
-    console.log('\n🪝 Demostración de hooks personalizados\n');
+/**
+ * Demostración de validación de errores
+ */
+async function demonstrateValidation() {
+    console.log('\n🔍 Demostración de validación con @Request()\n');
 
     const api = new ApiClient('https://jsonplaceholder.typicode.com');
 
-    // Agregar hook de request personalizado
-    api.addRequestHook(async (context) => {
-        console.log(`📤 Request Hook: ${context.method} ${context.url}`);
-
-        // Agregar timestamp a headers
-        if (!context.headers) context.headers = {};
-        context.headers['X-Request-Time'] = new Date().toISOString();
-
-        return context;
-    });
-
-    // Agregar hook de response personalizado
-    api.addResponseHook(async (response, context) => {
-        console.log(`📥 Response Hook: Received response for ${context.url}`);
-
-        // Agregar metadata a la respuesta
-        if (typeof response === 'object' && response !== null) {
-            response._metadata = {
-                requestTime: new Date().toISOString(),
-                endpoint: context.url,
-            };
-        }
-
-        return response;
-    });
-
-    // Agregar hook de error personalizado
-    api.addErrorHook(async (error, context) => {
-        const errorMessage = error instanceof Error ? error.message : String(error);
-        console.log(`🚨 Error Hook: Error in ${context.url} - ${errorMessage}`);
-
-        // Log del error para analytics
-        console.log('📊 Logging error for analytics...');
-
-        return error;
-    });
-
     try {
-        const users = await api.getUsers({
-            query: { page: 1, limit: 3 },
-            headers: { Authorization: 'Bearer fake-token' },
-        });
+        // Intentar crear usuario con datos inválidos
+        console.log('❌ Intentando crear usuario con datos inválidos...');
 
-        console.log('✅ Respuesta con hooks aplicados:', users);
+        await api.createUser(
+            {
+                // @Request() - datos inválidos
+                email: 'invalid-email', // Email inválido
+                password: '123', // Password muy corto
+                name: 'A', // Nombre muy corto
+                age: 15, // Edad menor a 18
+            },
+            { Authorization: 'Bearer fake-token' },
+            undefined as any
+        );
     } catch (error) {
-        console.log('ℹ️ Error manejado por hooks');
+        if (ErrorHandler.isValidationError(error)) {
+            console.log('✅ Validación funcionó correctamente');
+            console.log('📋 Errores encontrados:');
+            const validationErrors = ErrorHandler.getValidationErrors(error);
+            validationErrors.forEach((err: any) => {
+                console.log(`  - ${err.path.join('.')}: ${err.message}`);
+            });
+        } else {
+            if (typeof error === 'object' && error !== null && 'message' in error) {
+                console.log('⚠️ Error inesperado:', (error as { message: string }).message);
+            } else {
+                console.log('⚠️ Error inesperado:', error);
+            }
+        }
     }
 }
 
 // Ejecutar demostraciones
 async function runDemo() {
-    await demonstrateNewAPI();
-    await demonstrateHooks();
+    await demonstrateHttpDecorators();
+    await demonstrateValidation();
 }
 
 runDemo().catch(console.error);

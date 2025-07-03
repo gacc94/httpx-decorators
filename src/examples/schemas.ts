@@ -1,18 +1,35 @@
 import { z } from 'zod';
 
-// Schemas de request
+/**
+ * Schema para datos de sign in
+ */
 export const UserSignInSchema = z.object({
     email: z.string().email('Invalid email format'),
     password: z.string().min(6, 'Password must be at least 6 characters'),
 });
 
-export const UserSignUpSchema = z.object({
+/**
+ * Schema para crear usuario
+ */
+export const CreateUserSchema = z.object({
     email: z.string().email('Invalid email format'),
     password: z.string().min(6, 'Password must be at least 6 characters'),
     name: z.string().min(2, 'Name must be at least 2 characters'),
     age: z.number().min(18, 'Must be at least 18 years old').optional(),
 });
 
+/**
+ * Schema para actualizar usuario
+ */
+export const UpdateUserSchema = z.object({
+    name: z.string().min(2).optional(),
+    email: z.string().email().optional(),
+    age: z.number().min(18).optional(),
+});
+
+/**
+ * Schema para crear post
+ */
 export const CreatePostSchema = z.object({
     title: z.string().min(1, 'Title is required'),
     content: z.string().min(10, 'Content must be at least 10 characters'),
@@ -20,13 +37,9 @@ export const CreatePostSchema = z.object({
     published: z.boolean().default(false),
 });
 
-export const UpdateUserSchema = z.object({
-    name: z.string().min(2).optional(),
-    email: z.string().email().optional(),
-    age: z.number().min(18).optional(),
-});
-
-// Schemas de response
+/**
+ * Schema de respuesta de usuario
+ */
 export const UserResponseSchema = z.object({
     id: z.string(),
     email: z.string().email(),
@@ -36,6 +49,9 @@ export const UserResponseSchema = z.object({
     updatedAt: z.string().datetime(),
 });
 
+/**
+ * Schema de respuesta de post
+ */
 export const PostResponseSchema = z.object({
     id: z.string(),
     title: z.string(),
@@ -47,6 +63,9 @@ export const PostResponseSchema = z.object({
     updatedAt: z.string().datetime(),
 });
 
+/**
+ * Schema de lista de usuarios
+ */
 export const UserListResponseSchema = z.object({
     users: z.array(UserResponseSchema),
     total: z.number(),
@@ -55,22 +74,68 @@ export const UserListResponseSchema = z.object({
     hasNext: z.boolean(),
 });
 
-export const PostListResponseSchema = z.object({
-    posts: z.array(PostResponseSchema),
-    total: z.number(),
-    page: z.number(),
-    limit: z.number(),
-    hasNext: z.boolean(),
-});
+/**
+ * Clase de dominio User
+ */
+export class User {
+    constructor(
+        public readonly id: string,
+        public readonly email: string,
+        public readonly name: string,
+        public readonly token: string,
+        public readonly createdAt: Date,
+        public readonly updatedAt: Date
+    ) {}
 
-// Schemas de error
-export const ApiErrorSchema = z.object({
-    message: z.string(),
-    code: z.string(),
-    details: z.any().optional(),
-});
+    static fromApiResponse(data: z.infer<typeof UserResponseSchema>): User {
+        return new User(data.id, data.email, data.name, data.token, new Date(data.createdAt), new Date(data.updatedAt));
+    }
 
-// Clases de error personalizadas
+    get displayName(): string {
+        return this.name || this.email;
+    }
+
+    get isTokenValid(): boolean {
+        return typeof this.token === 'string' && this.token.length > 0;
+    }
+}
+
+/**
+ * Clase de dominio Post
+ */
+export class Post {
+    constructor(
+        public readonly id: string,
+        public readonly title: string,
+        public readonly content: string,
+        public readonly authorId: string,
+        public readonly tags: string[],
+        public readonly published: boolean,
+        public readonly createdAt: Date,
+        public readonly updatedAt: Date
+    ) {}
+
+    static fromApiResponse(data: z.infer<typeof PostResponseSchema>): Post {
+        return new Post(
+            data.id,
+            data.title,
+            data.content,
+            data.authorId,
+            data.tags,
+            data.published,
+            new Date(data.createdAt),
+            new Date(data.updatedAt)
+        );
+    }
+
+    get excerpt(): string {
+        return this.content.length > 100 ? this.content.substring(0, 100) + '...' : this.content;
+    }
+}
+
+/**
+ * Errores personalizados
+ */
 export class AuthenticationError extends Error {
     constructor(message: string = 'Authentication failed') {
         super(message);

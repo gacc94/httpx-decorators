@@ -1,19 +1,23 @@
 import { z } from 'zod';
-import { BaseHttpClient, GET, POST, PUT, DELETE, RequestParams } from '../index';
+import { BaseHttpClient, GET, POST, PUT, DELETE, Request, Response, Query, Headers, Params, createMapper } from '../index';
 import {
     UserSignInSchema,
-    UserSignUpSchema,
-    CreatePostSchema,
+    CreateUserSchema,
     UpdateUserSchema,
+    CreatePostSchema,
     UserResponseSchema,
     PostResponseSchema,
     UserListResponseSchema,
-    PostListResponseSchema,
+    User,
+    Post,
     AuthenticationError,
     ValidationError,
     NotFoundError,
 } from './schemas';
 
+/**
+ * Cliente API que demuestra el uso de decoradores HTTP con @Request()
+ */
 export class ApiClient extends BaseHttpClient {
     constructor(baseURL: string) {
         super({
@@ -24,147 +28,150 @@ export class ApiClient extends BaseHttpClient {
         });
     }
 
-    // Autenticación
+    /**
+     * Autenticación de usuario con @Request() para validar credenciales
+     */
     @POST({
         url: '/auth/signin',
         requestSchema: UserSignInSchema,
         responseSchema: UserResponseSchema,
         errorType: AuthenticationError,
-        validateRequest: true,
-        validateResponse: true,
+        headers: { 'User-Agent': true },
+        mapper: createMapper((response: z.infer<typeof UserResponseSchema>) => User.fromApiResponse(response)),
     })
-    async signIn(params: {
-        body: z.infer<typeof UserSignInSchema>;
-        headers?: { 'User-Agent'?: string };
-    }): Promise<z.infer<typeof UserResponseSchema>> {
-        return {} as z.infer<typeof UserResponseSchema>;
+    async signIn(
+        @Request() credentials: z.infer<typeof UserSignInSchema>,
+        @Query() query: { remember?: boolean },
+        @Headers() headers?: { 'User-Agent': string },
+        @Response() user?: User
+    ): Promise<User> {
+        console.log('🔐 Signing in user:', credentials.email);
+        console.log('📋 Remember me:', query.remember);
+        console.log('🌐 User-Agent:', headers?.['User-Agent']);
+        if (user) {
+            console.log('✅ Authenticated user:', user.displayName);
+        }
+        return user!;
     }
 
+    /**
+     * Crear usuario con @Request() para validar datos de usuario
+     */
     @POST({
-        url: '/auth/signup',
-        requestSchema: UserSignUpSchema,
+        url: '/users',
+        requestSchema: CreateUserSchema,
         responseSchema: UserResponseSchema,
         errorType: ValidationError,
-        headers: { 'Content-Type': true },
-    })
-    async signUp(params: {
-        body: z.infer<typeof UserSignUpSchema>;
-        headers?: { 'Content-Type'?: string };
-    }): Promise<z.infer<typeof UserResponseSchema>> {
-        return {} as z.infer<typeof UserResponseSchema>;
-    }
-
-    // Usuarios
-    @GET({
-        url: '/users',
-        responseSchema: UserListResponseSchema,
-        query: true,
         headers: { Authorization: true },
+        mapper: createMapper((response: z.infer<typeof UserResponseSchema>) => User.fromApiResponse(response)),
     })
-    async getUsers(params: {
-        query?: { page?: number; limit?: number; search?: string };
-        headers: { Authorization: string };
-    }): Promise<z.infer<typeof UserListResponseSchema>> {
-        return {} as z.infer<typeof UserListResponseSchema>;
+    async createUser(
+        @Request() userData: z.infer<typeof CreateUserSchema>,
+        @Headers() headers: { Authorization: string },
+        @Response() user: User
+    ): Promise<User> {
+        console.log('👤 Creating user:', userData.name);
+        console.log('📧 Email:', userData.email);
+        console.log('✅ User created:', user.displayName);
+        return user;
     }
 
-    @GET({
-        url: '/users/:id',
-        responseSchema: UserResponseSchema,
-        errorType: NotFoundError,
-        params: { id: true },
-        headers: { Authorization: true },
-    })
-    async getUserById(params: { params: { id: string }; headers: { Authorization: string } }): Promise<z.infer<typeof UserResponseSchema>> {
-        return {} as z.infer<typeof UserResponseSchema>;
-    }
-
+    /**
+     * Actualizar usuario con @Request() para validar datos de actualización
+     */
     @PUT({
         url: '/users/:id',
         requestSchema: UpdateUserSchema,
         responseSchema: UserResponseSchema,
         params: { id: true },
         headers: { Authorization: true },
+        mapper: createMapper((response: z.infer<typeof UserResponseSchema>) => User.fromApiResponse(response)),
     })
-    async updateUser(params: {
-        params: { id: string };
-        body: z.infer<typeof UpdateUserSchema>;
-        headers: { Authorization: string };
-    }): Promise<z.infer<typeof UserResponseSchema>> {
-        return {} as z.infer<typeof UserResponseSchema>;
+    async updateUser(
+        @Request() updateData: z.infer<typeof UpdateUserSchema>,
+        @Params() params: { id: string },
+        @Headers() headers: { Authorization: string },
+        @Response() user: User
+    ): Promise<User> {
+        console.log('✏️ Updating user ID:', params.id);
+        console.log('📝 Update data:', updateData);
+        console.log('✅ User updated:', user.displayName);
+        return user;
     }
 
+    /**
+     * Obtener usuario por ID (GET sin @Request())
+     */
+    @GET({
+        url: '/users/:id',
+        responseSchema: UserResponseSchema,
+        errorType: NotFoundError,
+        params: { id: true },
+        headers: { Authorization: true },
+        mapper: createMapper((response: z.infer<typeof UserResponseSchema>) => User.fromApiResponse(response)),
+    })
+    async getUserById(
+        @Params() params: { id: string },
+        @Headers() headers: { Authorization: string },
+        @Response() user: User
+    ): Promise<User> {
+        console.log('👤 Retrieved user ID:', params.id);
+        console.log('✅ User found:', user.displayName);
+        return user;
+    }
+
+    /**
+     * Obtener usuarios con query parameters (GET con @Request() opcional para query)
+     */
+    @GET({
+        url: '/users',
+        responseSchema: UserListResponseSchema,
+        query: true,
+        headers: { Authorization: true },
+    })
+    async getUsers(
+        @Query() query?: { page?: number; limit?: number; search?: string },
+        @Headers() headers?: { Authorization: string },
+        @Response() usersData?: z.infer<typeof UserListResponseSchema>
+    ): Promise<z.infer<typeof UserListResponseSchema>> {
+        console.log('👥 Getting users with query:', query);
+        console.log('📊 Total users found:', usersData?.total);
+        return usersData!;
+    }
+
+    /**
+     * Crear post con @Request() para validar contenido
+     */
+    @POST({
+        url: '/posts',
+        requestSchema: CreatePostSchema,
+        responseSchema: PostResponseSchema,
+        headers: { Authorization: true },
+        mapper: createMapper((response: z.infer<typeof PostResponseSchema>) => Post.fromApiResponse(response)),
+    })
+    async createPost(
+        @Request() postData: z.infer<typeof CreatePostSchema>,
+        @Headers() headers: { Authorization: string },
+        @Response() post: Post
+    ): Promise<Post> {
+        console.log('📝 Creating post:', postData.title);
+        console.log('📄 Content length:', postData.content.length);
+        console.log('🏷️ Tags:', postData.tags?.join(', ') || 'None');
+        console.log('✅ Post created:', post.title);
+        return post;
+    }
+
+    /**
+     * Eliminar usuario
+     */
     @DELETE({
         url: '/users/:id',
         params: { id: true },
         headers: { Authorization: true },
         errorType: NotFoundError,
     })
-    async deleteUser(params: { params: { id: string }; headers: { Authorization: string } }): Promise<void> {
-        return;
-    }
-
-    // Posts
-    @POST({
-        url: '/posts',
-        requestSchema: CreatePostSchema,
-        responseSchema: PostResponseSchema,
-        headers: { Authorization: true },
-    })
-    async createPost(params: {
-        body: z.infer<typeof CreatePostSchema>;
-        headers: { Authorization: string };
-    }): Promise<z.infer<typeof PostResponseSchema>> {
-        return {} as z.infer<typeof PostResponseSchema>;
-    }
-
-    @GET({
-        url: '/posts',
-        responseSchema: PostListResponseSchema,
-        query: true,
-        headers: { Authorization: true },
-    })
-    async getPosts(params: {
-        query?: { page?: number; limit?: number; authorId?: string };
-        headers: { Authorization: string };
-    }): Promise<z.infer<typeof PostListResponseSchema>> {
-        return {} as z.infer<typeof PostListResponseSchema>;
-    }
-
-    @GET({
-        url: '/posts/:id',
-        responseSchema: PostResponseSchema,
-        params: { id: true },
-        headers: { Authorization: true },
-        errorType: NotFoundError,
-    })
-    async getPostById(params: { params: { id: string }; headers: { Authorization: string } }): Promise<z.infer<typeof PostResponseSchema>> {
-        return {} as z.infer<typeof PostResponseSchema>;
-    }
-
-    @PUT({
-        url: '/posts/:id',
-        requestSchema: CreatePostSchema,
-        responseSchema: PostResponseSchema,
-        params: { id: true },
-        headers: { Authorization: true },
-    })
-    async updatePost(params: {
-        params: { id: string };
-        body: Partial<z.infer<typeof CreatePostSchema>>;
-        headers: { Authorization: string };
-    }): Promise<z.infer<typeof PostResponseSchema>> {
-        return {} as z.infer<typeof PostResponseSchema>;
-    }
-
-    @DELETE({
-        url: '/posts/:id',
-        params: { id: true },
-        headers: { Authorization: true },
-        errorType: NotFoundError,
-    })
-    async deletePost(params: { params: { id: string }; headers: { Authorization: string } }): Promise<void> {
-        return;
+    async deleteUser(@Params() params: { id: string }, @Headers() headers: { Authorization: string }): Promise<void> {
+        console.log('🗑️ Deleted user with ID:', params.id);
     }
 
     // Métodos de utilidad
@@ -176,7 +183,6 @@ export class ApiClient extends BaseHttpClient {
         this.removeDefaultHeader('Authorization');
     }
 
-    // Configurar hooks personalizados
     public setupAuthHooks(): void {
         this.addRequestHook(async (context) => {
             console.log(`🔐 Authenticating request to ${context.url}`);

@@ -1,7 +1,7 @@
 {
     "name": "httpx-decorators",
     "url": "https://github.com/gacc94/httpx-decorators",
-    "version": "2.1.0",
+    "version": "3.0.0",
     "description": "Framework-agnostic HTTP client library with decorators, Axios, and Zod validation",
     "main": "dist/index.js",
     "types": "dist/index.d.ts",

@@ -11,4 +11,13 @@ export * from './errors';
 export { z } from 'zod';
 
 // Exportar tipos de utilidad
-export type { InferRequestType, InferResponseType, RequestParams, HttpDecoratorConfig } from './types';
+export type {
+    InferRequestType,
+    InferResponseType,
+    InferMappedType,
+    RequestParams,
+    HttpDecoratorConfig,
+    ParameterMetadata,
+    EndpointMetadata,
+    MethodExecutionContext,
+} from './types';

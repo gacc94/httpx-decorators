@@ -1,93 +1,97 @@
-# HTTP Decorators
+<p align="center">
+  <img src="https://img.shields.io/npm/v/httpx-decorators?style=flat-square" alt="npm version" />
+  <img src="https://img.shields.io/npm/dm/httpx-decorators?style=flat-square" alt="npm downloads" />
+</p>
 
-Una librería framework-agnostic en TypeScript que permite realizar peticiones HTTP usando decoradores unificados, con Axios para las llamadas y Zod para validación automática de request y response.
+<h1 align="center">HTTPX DECORATORS</h1>
+
+<p align="center">
+  <b>Una librería <i>framework-agnostic</i> en <code>TypeScript</code> para peticiones HTTP usando decoradores, con <code>Axios</code> y <code>Zod</code> para validación automática.</b>
+</p>
+
+---
 
 ## 🚀 Características Principales
 
-- **🎯 Decoradores Unificados**: Configuración completa en un solo objeto
-- **🔒 Tipado Fuerte**: TypeScript con inferencia automática de tipos Zod
-- **✅ Validación Automática**: Request y response validation con Zod
-- **🌐 Framework Agnóstico**: Compatible con Angular, React, Node.js, etc.
-- **🪝 Sistema de Hooks**: Middlewares personalizables (onRequest, onResponse, onError)
-- **⚡ Basado en Axios**: Cliente HTTP robusto y confiable
-- **🛡️ Manejo de Errores**: Sistema completo con errores personalizados
-- **📦 Extensible**: Arquitectura modular y fácil de extender
+| Característica | Descripción |
+|:--------------:|:-----------|
+| 🎯 <b>Decoradores Unificados</b> | Configuración completa en un solo objeto |
+| 📋 <b>@Request()</b> | Validación automática del cuerpo de peticiones |
+| 📤 <b>@Response()</b> | Captura de respuestas validadas/mapeadas |
+| 🔒 <b>Tipado Fuerte</b> | TypeScript con inferencia automática de tipos Zod |
+| ✅ <b>Validación Automática</b> | Request y response validation con Zod |
+| 🌐 <b>Framework Agnóstico</b> | Compatible con Angular, React, Node.js, etc. |
+| 🪝 <b>Sistema de Hooks</b> | Middlewares personalizables (onRequest, onResponse, onError) |
+| ⚡ <b>Basado en Axios</b> | Cliente HTTP robusto y confiable |
+| 🛡️ <b>Manejo de Errores</b> | Sistema completo con errores personalizados |
+| 📦 <b>Extensible</b> | Arquitectura modular y fácil de extender |
+
+---
 
 ## 📦 Instalación
 
-npm install http-decorators axios zod reflect-metadata
+```bash
+npm install httpx-decorators axios zod reflect-metadata
+```
+
+---
 
 ## 🛠️ Configuración
 
-Configura tu `tsconfig.json`:
+Configura tu <code>tsconfig.json</code>:
 
 ```json
 {
-    "compilerOptions": {
-        "experimentalDecorators": true,
-        "emitDecoratorMetadata": true,
-        "target": "ES2020",
-        "module": "commonjs"
-    }
+  "compilerOptions": {
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+    "target": "ES2020",
+    "module": "commonjs"
+  }
 }
 ```
 
-Importa `reflect-metadata` al inicio de tu aplicación:
+Importa <code>reflect-metadata</code> al inicio de tu aplicación:
 
 ```typescript
 import 'reflect-metadata';
 ```
 
-## 🎯 Nueva API con Decoradores Unificados
+---
 
-### Sintaxis Anterior vs Nueva
-
-**❌ Sintaxis Anterior (v1.x):**
-
-@POST('auth/signin', UserResponseSchema)
-async signIn(
-@Body(UserRequestSchema) payload: UserRequest,
-@Header('Authorization') token: string
-): Promise<UserResponse> { ... }
-
-**✅ Nueva Sintaxis (v2.x):**
-
-@POST({
-url: '/auth/signin',
-requestSchema: UserRequestSchema,
-responseSchema: UserResponseSchema,
-errorType: AuthError,
-headers: { Authorization: true }
-})
-async signIn(params: {
-body: UserRequest;
-headers: { Authorization: string };
-}): Promise<UserResponse> { ... }
-
-## 📖 Uso Básico
+## 🎯 Uso Básico
 
 ### 1. Definir Schemas con Zod
 
 ```typescript
 import { z } from 'zod';
 
-const UserSignInSchema = z.object({
+// Schema para request
+const CreateUserSchema = z.object({
     email: z.string().email(),
     password: z.string().min(6),
+    name: z.string().min(2)
 });
 
+// Schema para response
 const UserResponseSchema = z.object({
     id: z.string(),
     email: z.string(),
     name: z.string(),
-    token: z.string(),
+    token: z.string()
 });
 
-// Error personalizado
-class AuthenticationError extends Error {
-    constructor(message = 'Authentication failed') {
-        super(message);
-        this.name = 'AuthenticationError';
+// Clase de dominio
+class User {
+    constructor(
+        public readonly id: string,
+        public readonly email: string,
+        public readonly name: string,
+        public readonly token: string
+    ) {}
+
+    static fromApiResponse(data: z.infer<typeof UserResponseSchema>): User {
+        return new User(data.id, data.email, data.name, data.token);
     }
 }
 ```
@@ -95,7 +99,12 @@ class AuthenticationError extends Error {
 ### 2. Crear Cliente API
 
 ```typescript
-import { BaseHttpClient, GET, POST, PUT, DELETE } from 'http-decorators';
+import {
+    BaseHttpClient,
+    GET, POST, PUT, DELETE,
+    Request, Response, Query, Headers, Params,
+    createMapper
+} from 'httx-decorators';
 
 class ApiClient extends BaseHttpClient {
     constructor() {
@@ -103,47 +112,68 @@ class ApiClient extends BaseHttpClient {
             baseURL: 'https://api.example.com',
             timeout: 10000,
             validateRequest: true,
-            validateResponse: true,
+            validateResponse: true
         });
     }
 
+    /**
+     * POST con @Request() para validar el cuerpo de la petición
+     */
     @POST({
-        url: '/auth/signin',
-        requestSchema: UserSignInSchema,
+        url: '/users',
+        requestSchema: CreateUserSchema,
         responseSchema: UserResponseSchema,
-        errorType: AuthenticationError,
-        validateRequest: true,
-        validateResponse: true,
+        headers: { Authorization: true },
+        mapper: createMapper((response: z.infer<typeof UserResponseSchema>) =>
+            User.fromApiResponse(response)
+        )
     })
-    async signIn(params: {
-        body: z.infer<typeof UserSignInSchema>;
-        headers?: { 'User-Agent'?: string };
-    }): Promise<z.infer<typeof UserResponseSchema>> {
-        return {} as z.infer<typeof UserResponseSchema>;
+    async createUser(
+        @Request() userData: z.infer<typeof CreateUserSchema>,
+        @Headers() headers: { Authorization: string },
+        @Response() user: User
+    ): Promise<User> {
+        console.log('Creating user:', userData.name);
+        return user;
     }
 
+    /**
+     * GET sin @Request() (típico para métodos GET)
+     */
     @GET({
         url: '/users/:id',
         responseSchema: UserResponseSchema,
         params: { id: true },
         headers: { Authorization: true },
-        errorType: NotFoundError,
+        mapper: createMapper((response: z.infer<typeof UserResponseSchema>) =>
+            User.fromApiResponse(response)
+        )
     })
-    async getUserById(params: { params: { id: string }; headers: { Authorization: string } }): Promise<z.infer<typeof UserResponseSchema>> {
-        return {} as z.infer<typeof UserResponseSchema>;
+    async getUserById(
+        @Params() params: { id: string },
+        @Headers() headers: { Authorization: string },
+        @Response() user: User
+    ): Promise<User> {
+        return user;
     }
 
-    @GET({
-        url: '/users',
-        responseSchema: UserListResponseSchema,
-        query: true,
-        headers: { Authorization: true },
+    /**
+     * PUT con @Request() para validar datos de actualización
+     */
+    @PUT({
+        url: '/users/:id',
+        requestSchema: UpdateUserSchema,
+        responseSchema: UserResponseSchema,
+        params: { id: true },
+        headers: { Authorization: true }
     })
-    async getUsers(params: {
-        query?: { page?: number; limit?: number };
-        headers: { Authorization: string };
-    }): Promise<z.infer<typeof UserListResponseSchema>> {
-        return {} as z.infer<typeof UserListResponseSchema>;
+    async updateUser(
+        @Request() updateData: z.infer<typeof UpdateUserSchema>,
+        @Params() params: { id: string },
+        @Headers() headers: { Authorization: string },
+        @Response() user: User
+    ): Promise<User> {
+        return user;
     }
 }
 ```
@@ -154,39 +184,41 @@ class ApiClient extends BaseHttpClient {
 const api = new ApiClient();
 
 try {
-    // Sign in con nueva sintaxis
-    const user = await api.signIn({
-        body: {
+    // Crear usuario con validación automática del @Request()
+    const newUser = await api.createUser(
+        {
             email: 'user@example.com',
             password: 'password123',
+            name: 'John Doe'
         },
-        headers: {
-            'User-Agent': 'MyApp/1.0',
-        },
-    });
+        { Authorization: 'Bearer token' },
+        undefined as any // @Response() se inyecta automáticamente
+    );
 
-    // Configurar token para futuras requests
-    api.setAuthToken(user.token);
+    console.log('User created:', newUser.name);
 
-    // Obtener usuario específico
-    const userDetails = await api.getUserById({
-        params: { id: '123' },
-        headers: { Authorization: `Bearer ${user.token}` },
-    });
+    // Obtener usuario por ID
+    const user = await api.getUserById(
+        { id: newUser.id },
+        { Authorization: 'Bearer token' },
+        undefined as any
+    );
 
-    // Obtener lista de usuarios con filtros
-    const users = await api.getUsers({
-        query: { page: 1, limit: 10 },
-        headers: { Authorization: `Bearer ${user.token}` },
-    });
+    console.log('User retrieved:', user.name);
+
 } catch (error) {
     console.error('Error:', error);
 }
 ```
 
-## 🎛️ Configuración de Decoradores
+---
+## 🎛️ Decoradores Disponibles
 
-### Opciones Disponibles
+---
+
+### 🟢 Decoradores de Método HTTP
+
+> Todos los decoradores HTTP reciben un objeto de configuración unificado:
 
 ```typescript
 interface HttpDecoratorConfig {
@@ -200,162 +232,310 @@ interface HttpDecoratorConfig {
     timeout?: number; // Timeout específico
     validateRequest?: boolean; // Habilitar validación de request
     validateResponse?: boolean; // Habilitar validación de response
+    mapper?: (response: any) => any; // Función de transformación
 }
 ```
 
-### Ejemplos de Configuración
+---
+
+#### <span style="color:#1abc9c">@GET(config)</span>
 
 ```typescript
-// Configuración básica
-@GET({ url: '/users' })
-
-// Con validación de response
+// Para peticiones GET. Normalmente no requiere @Request().
 @GET({
-  url: '/users',
-  responseSchema: UserListSchema
+    url: '/users/:id',
+    responseSchema: UserSchema,
+    params: { id: true }
 })
-
-// Con headers específicos
-@POST({
-  url: '/posts',
-  requestSchema: CreatePostSchema,
-  responseSchema: PostResponseSchema,
-  headers: { Authorization: true, 'Content-Type': true }
-})
-
-// Con parámetros de URL
-@GET({
-  url: '/users/:id/posts/:postId',
-  responseSchema: PostSchema,
-  params: { id: true, postId: true },
-  headers: { Authorization: true }
-})
-
-// Con query parameters
-@GET({
-  url: '/search',
-  responseSchema: SearchResultsSchema,
-  query: { q: true, page: true, limit: true }
-})
-
-// Con error personalizado
-@POST({
-  url: '/auth/login',
-  requestSchema: LoginSchema,
-  responseSchema: AuthResponseSchema,
-  errorType: AuthenticationError
-})
+async getUser(
+    @Params() params: { id: string },
+    @Response() user: User
+): Promise<User> {
+    return user;
+}
 ```
 
-## 🪝 Sistema de Hooks/Middlewares
+#### <span style="color:#e67e22">@POST(config)</span>
 
 ```typescript
-const api = new ApiClient('https://api.example.com');
+// Para peticiones POST. Usar con @Request() para validar el cuerpo.
+@POST({
+    url: '/users',
+    requestSchema: CreateUserSchema,
+    responseSchema: UserSchema
+})
+async createUser(
+    @Request() userData: CreateUserRequest,
+    @Response() user: User
+): Promise<User> {
+    return user;
+}
+```
+
+#### <span style="color:#e74c3c">@PUT(config), @PATCH(config), @DELETE(config)</span>
+
+```typescript
+// Similar a POST, usar con @Request() cuando sea necesario validar el cuerpo.
+@PUT({
+    url: '/users/:id',
+    requestSchema: UpdateUserSchema,
+    responseSchema: UserSchema,
+    params: { id: true }
+})
+async updateUser(
+    @Request() updateData: UpdateUserRequest,
+    @Params() params: { id: string },
+    @Response() user: User
+): Promise<User> {
+    return user;
+}
+```
+
+---
+
+### 🟣 Decoradores de Parámetros
+
+---
+
+#### <b>@Request(schema?)</b>
+
+> ⚠️ <b>Recomendación importante:</b> Usar principalmente en métodos <code>POST</code>, <code>PUT</code>, <code>PATCH</code>.
+
+```typescript
+@POST({
+    url: '/users',
+    requestSchema: CreateUserSchema
+})
+async createUser(
+    @Request() userData: z.infer<typeof CreateUserSchema>
+): Promise<User> {
+    // userData ya está validado con CreateUserSchema
+    return userData;
+}
+```
+
+#### <b>@Response(schema?)</b>
+
+> 🏁 <b>Debe colocarse al final del método</b> para asegurar que toda la validación se complete.
+
+```typescript
+@GET({
+    url: '/users/:id',
+    responseSchema: UserSchema,
+    mapper: (data) => new User(data)
+})
+async getUser(
+    @Params() params: { id: string },
+    @Response() user: User
+): Promise<User> {
+    // user ya está validado y mapeado
+    return user;
+}
+```
+
+#### <b>@Query(key?, schema?)</b>
+
+```typescript
+// Para inyectar query parameters.
+@GET({
+    url: '/users',
+    query: true
+})
+async getUsers(
+    @Query() query: { page?: number; limit?: number }
+): Promise<User[]> {
+    // query contiene todos los query parameters
+}
+```
+
+#### <b>@Headers(key?, schema?)</b>
+
+```typescript
+// Para inyectar headers.
+@POST({
+    url: '/users',
+    headers: { Authorization: true }
+})
+async createUser(
+    @Headers() headers: { Authorization: string }
+): Promise<User> {
+    // headers contiene los headers configurados
+}
+```
+
+#### <b>@Params(key?, schema?)</b>
+
+```typescript
+// Para inyectar parámetros de URL.
+@GET({
+    url: '/users/:id',
+    params: { id: true }
+})
+async getUser(
+    @Params() params: { id: string }
+): Promise<User> {
+    // params contiene los parámetros de URL
+}
+```
+
+---
+
+## 🔄 Mappers
+
+> Los mappers transforman automáticamente las respuestas validadas a objetos de dominio.
+
+```typescript
+@GET({
+    url: '/users/:id',
+    responseSchema: UserResponseSchema,
+    mapper: createMapper((response: z.infer<typeof UserResponseSchema>) =>
+        User.fromApiResponse(response)
+    )
+})
+async getUser(
+    @Response() user: User
+): Promise<User> {
+    // user ya es una instancia de la clase User
+    return user;
+}
+```
+
+---
+
+## 🛡️ Validación y Manejo de Errores
+
+### ✅ Validación Automática
+
+```typescript
+// El @Request() valida automáticamente con el requestSchema
+@POST({
+    url: '/users',
+    requestSchema: CreateUserSchema // Validación automática
+})
+async createUser(
+    @Request() userData: z.infer<typeof CreateUserSchema>
+): Promise<User> {
+    // Si userData no cumple el schema, se lanza ValidationError automáticamente
+    return userData;
+}
+```
+
+### 🚨 Manejo de Errores
+
+```typescript
+import { ErrorHandler, ValidationError, NetworkError } from 'httx-decorators';
+
+try {
+    const result = await api.createUser(invalidData);
+} catch (error) {
+    if (ErrorHandler.isValidationError(error)) {
+        console.error('Validation errors:', ErrorHandler.getValidationErrors(error));
+    } else if (ErrorHandler.isNetworkError(error)) {
+        console.error('Network error:', ErrorHandler.getNetworkStatus(error));
+    } else {
+        console.error('Unknown error:', error);
+    }
+}
+```
+
+---
+
+
+## 🪝 Sistema de Hooks
+
+```typescript
+const api = new ApiClient();
 
 // Hook de request
 api.addRequestHook(async (context) => {
     console.log(`Making request to ${context.url}`);
-
-    // Agregar timestamp
-    if (!context.headers) context.headers = {};
-    context.headers['X-Request-Time'] = new Date().toISOString();
-
     return context;
 });
 
 // Hook de response
 api.addResponseHook(async (response, context) => {
     console.log(`Received response from ${context.url}`);
-
-    // Procesar respuesta
-    if (typeof response === 'object') {
-        response._requestTime = new Date().toISOString();
-    }
-
     return response;
 });
 
 // Hook de error
 api.addErrorHook(async (error, context) => {
     console.error(`Error in ${context.url}:`, error.message);
-
-    // Log para analytics
-    analytics.track('api_error', {
-        url: context.url,
-        error: error.message,
-    });
-
     return error;
 });
 ```
 
-## 🛡️ Manejo de Errores
+---
+
+## 📝 Buenas Prácticas
+
+---
+
+### 1️⃣ Uso de <code>@Request()</code>
+- <b>POST, PUT, PATCH</b>: Usar <code>@Request()</code> para validar el cuerpo de la petición
+- <b>GET, DELETE</b>: Normalmente no requieren <code>@Request()</code>
+
+### 2️⃣ Posición de <code>@Response()</code>
+- <b>Siempre al final</b>: Colocar <code>@Response()</code> como último parámetro del método
+
+### 3️⃣ Validación Request/Response
+- <b>requestSchema</b>: Define el schema para validar <code>@Request()</code>
+- <b>responseSchema</b>: Define el schema para validar <code>@Response()</code>
+- <b>mapper</b>: Transforma la respuesta validada a objetos de dominio
+
+### 4️⃣ Configuración de Decoradores
 
 ```typescript
-import { ErrorHandler, ValidationError, NetworkError } from 'http-decorators';
-
-try {
-  const result = await api.someMethod({ ... });
-} catch (error) {
-  if (ErrorHandler.isValidationError(error)) {
-    console.error('Validation errors:', ErrorHandler.getValidationErrors(error));
-  } else if (ErrorHandler.isNetworkError(error)) {
-    console.error('Network error:', ErrorHandler.getNetworkStatus(error));
-  } else if (ErrorHandler.isCustomError(error)) {
-    console.error('Custom error:', error.originalError);
-  } else {
-    console.error('Unknown error:', error);
-  }
+// ✅ Buena práctica
+@POST({
+    url: '/users',
+    requestSchema: CreateUserSchema, // Valida @Request()
+    responseSchema: UserResponseSchema, // Valida @Response()
+    headers: { Authorization: true }, // Habilita headers específicos
+    errorType: ValidationError // Error personalizado
+})
+async createUser(
+    @Request() userData: CreateUserRequest,
+    @Headers() headers: { Authorization: string },
+    @Response() user: User // Al final
+): Promise<User> {
+    return user;
 }
 ```
 
+---
+
 ## 🏗️ Arquitectura
 
-```
+```text
 src/
-├── types/          # Interfaces y tipos TypeScript
-├── decorators/     # Decoradores HTTP unificados
-├── metadata/       # Sistema de metadatos simplificado
-├── client/         # Cliente HTTP base con hooks
-├── errors/         # Manejo de errores
-└── examples/       # Ejemplos de uso
+├── types/       # Interfaces y tipos TypeScript con JSDoc
+├── decorators/  # Decoradores HTTP con @Request() y JSDoc completo
+├── metadata/    # Sistema de metadatos con validación
+├── client/      # Cliente HTTP con soporte para @Request()
+├── errors/      # Manejo de errores
+└── examples/    # Ejemplos ejecutables completos
 ```
 
-## 🔄 Migración desde v1.x
+---
 
-### Cambios Principales
+## 🚀 Ejemplo Ejecutable
 
-1. **Decoradores Unificados**: Un solo objeto de configuración
-2. **Parámetros Unificados**: Un solo parámetro `params` en lugar de múltiples
-3. **Configuración Explícita**: Headers, query, params deben declararse
-4. **Hooks Sistema**: Nuevos hooks para request/response/error
+Ejecuta el ejemplo completo:
 
-### Guía de Migración
+```bash
+npm run dev
+```
 
-**Antes (v1.x):**
+Este comando ejecuta <code>src/examples/basic-usage.ts</code> que demuestra:
 
-@POST('users', UserResponseSchema)
-async createUser(
-@Body(UserRequestSchema) user: UserRequest,
-@Header('Authorization') token: string
-): Promise<UserResponse> { ... }
+- Uso de <code>@Request()</code> para validar peticiones POST/PUT
+- Uso de <code>@Response()</code> para capturar respuestas
+- Validación automática con Zod
+- Manejo de errores
+- Mappers para transformar respuestas
 
-**Después (v2.x):**
-
-@POST({
-url: '/users',
-requestSchema: UserRequestSchema,
-responseSchema: UserResponseSchema,
-headers: { Authorization: true }
-})
-async createUser(params: {
-body: UserRequest;
-headers: { Authorization: string };
-}): Promise<UserResponse> { ... }
-
-## 📝 Ejemplos Completos
-
-Ver los archivos de ejemplo en `/src/examples/` para casos de uso completos y avanzados.
+---
 
 ## 🤝 Contribuir
 
@@ -365,16 +545,14 @@ Ver los archivos de ejemplo en `/src/examples/` para casos de uso completos y av
 4. Push a la rama (`git push origin feature/amazing-feature`)
 5. Abre un Pull Request
 
+---
+
 ## 📄 Licencia
 
-MIT License - ver el archivo [LICENSE](LICENSE) para más detalles.
-
-## 🔗 Enlaces
-
-- [Documentación completa](https://github.com/your-repo/http-decorators)
-- [Ejemplos avanzados](https://github.com/your-repo/http-decorators/tree/main/examples)
-- [Changelog](https://github.com/your-repo/http-decorators/blob/main/CHANGELOG.md)
+MIT License
 
 ---
 
-**HTTP Decorators v2.0** - Simplificando las peticiones HTTP con decoradores unificados y tipado fuerte.
+<p align="center">
+  <b>httx-decorators</b> - Simplificando las peticiones HTTP con decoradores unificados, validación automática y tipado fuerte.
+</p>
